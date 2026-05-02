@@ -13,8 +13,13 @@ public class BogosortProb {
 	
 	public static void main(String[] args) {
 		//info(600l);
-		parallelInfo(30_000_000l);
+		//parallelInfo(30_000_000l);
 		//parallelInfo(10543139l);
+		//parallelInfo(2326004l, 25);
+		Fraction p = parallelChanceMax(25,14,2990484l);
+		printFracK(14,p);
+		//Fraction exp = expectedValue(8,30);
+		//printFrac(exp);
 	}
 
 	/**
@@ -22,16 +27,26 @@ public class BogosortProb {
 	 * @param shufflesPerMinute
 	 */
 	public static void info(long shufflesPerMinute) {
-		info(shufflesPerMinute,CURRENT_N);
+		info(shufflesPerMinute/60l,CURRENT_N);
 	}
 
-	public static void info(long shufflesPerMinute, int N) {
-		long s = shufflesPerMinute / 60;
+	/**
+	 * 
+	 * @param s Shuffles per second
+	 * @param N
+	 */
+	public static void info(long s, int N) {
+		//Fraction expectedValue = Fraction.ZERO;
+		//long s = shufflesPerMinute / 60;
 		for (int i = 0; i <= N; i++) {
 			//Fraction p = parallelChanceMax(N,i,s);
 			Fraction p = chanceMax(N,i,s);
-			printFrac(i,p);
+			//expectedValue = expectedValue.add(p.multiply(i));
+			printFracK(i,p);
 		}
+		Fraction expectedValue = expectedValue(N,s);
+		System.out.print("The expected value of properly sorted elements is ");
+		printFrac(expectedValue);
 	}
 
 	/**
@@ -39,17 +54,26 @@ public class BogosortProb {
 	 * @param shufflesPerMinute
 	 */
 	public static void parallelInfo(long shufflesPerMinute) {
-		parallelInfo(shufflesPerMinute,CURRENT_N);
+		parallelInfo(shufflesPerMinute/60,CURRENT_N);
 	}
 
-	public static void parallelInfo(long shufflesPerMinute, int N) {
-		long s = shufflesPerMinute / 60;
+	/**
+	 * 
+	 * @param s Shuffles per second
+	 * @param N
+	 */
+	public static void parallelInfo(long s, int N) {
+		//Fraction expectedValue = Fraction.ZERO;
+		//long s = shufflesPerMinute / 60;
 		Deque<ChanceMaxThread> running = new LinkedList<>();
 		for (int i = N; i >= 0; i--) {
 			ChanceMaxThread t = new ChanceMaxThread(N, i, s);
 			t.start();
 			running.addFirst(t);
 		}
+		//Fraction expectedValue = expectedValue(N,s);
+		ExpectedValueThread eThread = new ExpectedValueThread(N, s);
+		eThread.start();
 		while (running.size() > 0) {
 			ChanceMaxThread t = running.removeFirst();
 			do {
@@ -57,16 +81,31 @@ public class BogosortProb {
 					t.join();
 				} catch (InterruptedException e) {}
 			} while (t.isAlive());
-			printFrac(t.getK(), t.getResult());
+			//expectedValue = expectedValue.add(t.getResult().multiply(t.getK()));
+			printFracK(t.getK(), t.getResult());
 		}
+		do {
+			try {
+				eThread.join();
+			} catch (InterruptedException e) {}
+		} while (eThread.isAlive());
+		System.out.print("The expected value of correctly sorted elements is ");
+		printFrac(eThread.getResult());
 	}
 
 	public static void parallelInfoBatched(long shufflesPerMinute) {
-		parallelInfoBatched(shufflesPerMinute, CURRENT_N, BATCH_SIZE);
+		parallelInfoBatched(shufflesPerMinute/60, CURRENT_N, BATCH_SIZE);
 	}
 
-	public static void parallelInfoBatched(long shufflesPerMinute, int N, int batchSize) {
-		long s = shufflesPerMinute / 60;
+	/**
+	 * 
+	 * @param s Shuffles per second
+	 * @param N
+	 * @param batchSize
+	 */
+	public static void parallelInfoBatched(long s, int N, int batchSize) {
+		//Fraction expectedValue = Fraction.ZERO;
+		//long s = shufflesPerMinute / 60;
 		Deque<ChanceMaxThread> running = new LinkedList<>();
 		for (int j = 0; j <= N; j += batchSize) {
 			for (int i = Math.min(N+1-j,batchSize)-1; i >=0; i--) {
@@ -81,15 +120,23 @@ public class BogosortProb {
 						t.join();
 					} catch (InterruptedException e) {}
 				} while (t.isAlive());
-				printFrac(t.getK(), t.getResult());
+				//expectedValue = expectedValue.add(t.getResult().multiply(t.getK()));
+				printFracK(t.getK(), t.getResult());
 			}
 		}
+		Fraction expectedValue = expectedValue(N,s);
+		System.out.print("The expected number of properly sorted elements is ");
+		printFrac(expectedValue);
 	}
 
-	private static void printFrac(int i, Fraction f) {
+	private static void printFracK(int i, Fraction f) {
 		System.out.print("The chance of a ");
 		System.out.print(i);
 		System.out.print(" appearing is ");
+		printFrac(f);
+	}
+
+	private static void printFrac(Fraction f) {
 		if (f.stringLengthEstimate() > MAX_LENGTH) {
 			System.out.println(f.toBigDecimal());
 		}
@@ -97,15 +144,14 @@ public class BogosortProb {
 			f.toPrintStream(System.out);
 			if (!f.isInteger()) {
 				System.out.print(" (");
-				System.out.print(f.doubleValue());
+				//System.out.print(f.doubleValue());
+				System.out.print(f.toBigDecimal());
 				System.out.println(")");
 			} else {
 				System.out.println();
 			}
 		}
 	}
-
-	
 
 	/**
 	 * Performs {@code base.pow(exponent)} using parallel multiplication. 0^0 = 1
@@ -354,7 +400,7 @@ public class BogosortProb {
 	 * @return
 	 */
 	public static BigInteger gcdFactorial(BigInteger a, int n, long exponent) {
-		BigInteger result = BigInteger.ONE;
+		/*BigInteger result = BigInteger.ONE;
 		long[] factors = pfFactorial(n);
 		BigInteger[] dm;
 		for (int i = 0; i < factors.length; i++) {
@@ -374,7 +420,8 @@ public class BogosortProb {
 				}
 			}
 		}
-		return result;
+		return result;*/
+		return gcdFactorial(a,pfFactorial(n),exponent);
 	}
 
 	public static BigInteger gcdFactorial(BigInteger a, long[] factors, long exponent) {
@@ -452,6 +499,72 @@ public class BogosortProb {
 		}
 		return result;
 	}
+
+	/**
+	 * Computes the expected value of the maximum number of properly placed elements in {@code n} 
+	 * independent random permutations of {@code N} elements
+	 * @param N The total number of elements
+	 * @param n The number of shuffles to consider
+	 * @return the expected number of properly sorted elements
+	 */
+	public static Fraction expectedValue(int N, long n) {
+
+		BigInteger sub = ExtraMath.subfactorial(N);//!(N-(i-1))
+		BigInteger binom = BigInteger.ONE;//nCr(N,i-1)
+
+		BigInteger curP = sub;//P(x<=i-1)
+		BigInteger accum = pow(curP, n);
+		for (int i = 1; i < N; i++) {
+			BigInteger d = BigInteger.valueOf(N-i+1);
+			sub = ExtraMath.addNegOne(sub,N-i).divide(d);
+			binom = binom.multiply(d).divide(BigInteger.valueOf(i));
+			curP = curP.add(sub.multiply(binom));
+			accum = accum.add(pow(curP,n));
+		}
+		
+		BigInteger fact = ExtraMath.factorial(N);
+		/*BigInteger den = BigInteger.ONE;
+		BigInteger g = accum.gcd(fact);
+		while (!g.equals(BigInteger.ONE) && n > 0) {
+			accum = accum.divide(g);
+			den = den.multiply(fact.divide(g));
+			n--;
+			g = accum.gcd(fact);
+		}
+		if (n != 0) {
+			den = den.multiply(pow(fact,n));
+		}*/
+		BigInteger den = pow(fact,n);
+		return new Fraction(BigInteger.valueOf(N).multiply(den).subtract(accum),den,false);
+	}
+
+	/**
+	 * Computes the expected value of the maximum number of properly placed elements in {@code n} 
+	 * independent random permutations of {@code N} elements
+	 * @param N The total number of elements
+	 * @param n The number of shuffles to consider
+	 * @return the expected number of properly sorted elements
+	 */
+	public static Fraction parallelExpectedValue(int N, long n) {
+
+		BigInteger sub = ExtraMath.subfactorial(N);//!(N-(i-1))
+		BigInteger binom = BigInteger.ONE;//nCr(N,i-1)
+
+		BigInteger curP = sub;//P(x<=i-1)
+		BigInteger accum = parallelPow(curP, n);
+		for (int i = 1; i < N; i++) {
+			BigInteger d = BigInteger.valueOf(N-i+1);
+			sub = ExtraMath.addNegOne(sub,N-i).divide(d);
+			binom = binom.multiply(d).divide(BigInteger.valueOf(i));
+			curP = curP.add(sub.multiply(binom));
+			accum = accum.add(parallelPow(curP,n));
+		}
+		//BigInteger gcd = gcdFactorial(accum,N,n);
+		//BigInteger den = parallelPow(ExtraMath.factorial(N),n).divide(gcd);
+		//return new Fraction(BigInteger.valueOf(N).multiply(den).subtract(accum.divide(gcd)),den,false);
+		BigInteger den = parallelPow(ExtraMath.factorial(N),n);
+		return new Fraction(BigInteger.valueOf(N).multiply(den).subtract(accum),den,false);
+	}	
 
 	private static class ParPowThread extends Thread {
 		private BigInteger number;
@@ -550,11 +663,21 @@ public class BogosortProb {
 			long minExp = 0;
 			long maxExp = maxExponent;
 			//num = num_0 / (prime ^ minExp)
+
+			//exponential search
+			BigInteger divisor;// = prime;
+			BigInteger[] dm;// = num.divideAndRemainder(divisor);
+			//while (minExp < maxExp) {
+
+			//}
+			//main binary search
 			while (minExp < maxExp) {
-				doUpdate();
-				long mid = (minExp+maxExp)/2;
-				BigInteger divisor = parallelPow(prime, mid-minExp);//divisor = prime ^ (mid-minExp)
-				BigInteger[] dm = num.divideAndRemainder(divisor);//dm[0] = num_0/(prime^mid)
+				doUpdate();//if other threads have gotten divisors, use them to reduce the number so that it is smaller
+				//long mid = minExp + ((maxExp-minExp)>>1);
+				//If there are a lot of elements, give preference to lower exponents
+				long mid = minExp + (maxExp-minExp) >> ((minExp == 0 && maxExp - minExp > 1_000_000l) ? 2 : 1);
+				divisor = parallelPow(prime, mid-minExp);//divisor = prime ^ (mid-minExp)
+				dm = num.divideAndRemainder(divisor);//dm[0] = num_0/(prime^mid)
 				//Case 1: prime^mid does not divide num - mid is too large
 				if (!dm[1].equals(BigInteger.ZERO)) {
 					maxExp = mid-1;
@@ -566,12 +689,14 @@ public class BogosortProb {
 						minExp = mid+1;
 					}//Case 3: prime^mid divides num but prime^(mid+1) doesn't - mid is correct
 					else {
-						result = divisor.parallelMultiply(parallelPow(prime, minExp));
+						//result = divisor.parallelMultiply(parallelPow(prime, minExp));
+						result = divisor.multiply(pow(prime, minExp));
 						return;
 					}
 				}
 			}
-			result = parallelPow(prime, minExp);
+			//result = parallelPow(prime, minExp);
+			result = pow(prime, minExp);
 		}
 		
 		/**
@@ -636,6 +761,26 @@ public class BogosortProb {
 
 		public int getK() {
 			return k;
+		}
+	}
+
+	private static class ExpectedValueThread extends Thread {
+		private Fraction result;
+		private final int N;
+		private final long n;
+
+		public ExpectedValueThread(int N, long n) {
+			this.N = N;
+			this.n = n;
+			this.result = null;
+		}
+
+		public Fraction getResult() {
+			return result;
+		}
+
+		public void run() {
+			result = parallelExpectedValue(N,n);
 		}
 	}
 }

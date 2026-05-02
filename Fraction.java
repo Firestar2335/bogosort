@@ -147,7 +147,14 @@ public class Fraction extends Number implements Comparable<Fraction> {
 		return num.divide(den,mc);
 	}
 
+	//A number with a magnitude of at least b^max_exponent*(b-b^(1-p)/2) rounds to infinity
+	//at least 2^max_exponent * (2-2^(-p))
+
 	public double doubleValue() {
+		//Round ties to even
+		//if (den.equals(BigInteger.ONE)) {
+		//	return num.doubleValue();
+		//}
 		int sign = num.signum();
 		if (sign == 0) {
 			return 0.0;
@@ -165,22 +172,26 @@ public class Fraction extends Number implements Comparable<Fraction> {
 			dm = dm[1].shiftLeft(1).divideAndRemainder(den);
 			fracPart = fracPart.shiftLeft(1).or(dm[0]);
 			fracLength++;
-			if (prec != 0 || leadingZeros > Double.MIN_EXPONENT || fracPart.signum() != 0) {
+			if (prec != 0 || leadingZeros > -Double.MIN_EXPONENT-1 || fracPart.signum() != 0) {
 				prec++;
 			}
 			else {
 				leadingZeros++;
 			}
 		}
+		//next bit determines 
+		//System.out.println(fracPart);
+		//System.out.println(leadingZeros);
 		int exponent;
 		if (intPart.equals(BigInteger.ZERO)) {
-			exponent = Math.max(Double.MIN_EXPONENT, 1-leadingZeros);
+			exponent = Math.max(Double.MIN_EXPONENT, -leadingZeros-1);
 		} else {
 			exponent = intPart.bitLength()-1;
 		}
 		if (exponent > Double.MAX_EXPONENT) {
 			return (sign > 0) ? Double.POSITIVE_INFINITY : Double.NEGATIVE_INFINITY;
 		}
+		//System.out.println(exponent);
 		long sigBits = intPart.shiftRight(exponent-Double.PRECISION+1).or(fracPart.shiftRight(exponent+fracLength+1-Double.PRECISION)).longValue();
 		long expBits;
 		if ((sigBits & ~DOUBLE_SIG_MASK) == 0) {
@@ -188,6 +199,7 @@ public class Fraction extends Number implements Comparable<Fraction> {
 		} else {
 			expBits = ((long) (exponent + DOUBLE_EXP_BIAS)) << (Double.PRECISION-1);
 		}
+		//System.out.println(sigBits);
 		sigBits = sigBits & DOUBLE_SIG_MASK;
 
 		long bits = sigBits | expBits | (sign == -1 ? 0x8000_0000_0000_0000l : 0);
@@ -196,6 +208,9 @@ public class Fraction extends Number implements Comparable<Fraction> {
 	}
 
 	public float floatValue() {
+		//if (den.equals(BigInteger.ONE)) {
+		//	return den.floatValue();
+		//}
 		int sign = num.signum();
 		if (sign == 0) {
 			return 0.0f;
@@ -213,7 +228,7 @@ public class Fraction extends Number implements Comparable<Fraction> {
 			dm = dm[1].shiftLeft(1).divideAndRemainder(den);
 			fracPart = fracPart.shiftLeft(1).or(dm[0]);
 			fracLength++;
-			if (prec != 0 || leadingZeros > Float.MIN_EXPONENT || fracPart.signum() != 0) {
+			if (prec != 0 || leadingZeros > -Float.MIN_EXPONENT-1 || fracPart.signum() != 0) {
 				prec++;
 			}
 			else {
@@ -222,11 +237,11 @@ public class Fraction extends Number implements Comparable<Fraction> {
 		}
 		int exponent;
 		if (intPart.equals(BigInteger.ZERO)) {
-			exponent = Math.max(Float.MIN_EXPONENT, 1-leadingZeros);
+			exponent = Math.max(Float.MIN_EXPONENT, -leadingZeros-1);
 		} else {
 			exponent = intPart.bitLength()-1;
 		}
-		if (exponent > Double.MAX_EXPONENT) {
+		if (exponent > Float.MAX_EXPONENT) {
 			return (sign > 0) ? Float.POSITIVE_INFINITY : Float.NEGATIVE_INFINITY;
 		}
 		int sigBits = intPart.shiftRight(exponent-Float.PRECISION+1).or(fracPart.shiftRight(exponent+fracLength+1-Float.PRECISION)).intValue();
@@ -363,6 +378,12 @@ public class Fraction extends Number implements Comparable<Fraction> {
 		BigInteger gcdB = other.num.gcd(den);
 		return new Fraction(num.divide(gcdA).multiply(other.num.divide(gcdB)),den.divide(gcdB).multiply(other.den.divide(gcdA)));
 		//return new Fraction(num.multiply(other.num), den.multiply(other.den));
+	}
+
+	public Fraction multiply(long other) {
+		BigInteger factor = BigInteger.valueOf(other);
+		BigInteger gcd = factor.gcd(den);
+		return new Fraction(num.multiply(factor.divide(gcd)),den.divide(gcd));
 	}
 
 	/**
