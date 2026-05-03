@@ -161,4 +161,81 @@ public class ExtraMath {
 	public static BigInteger addNegOne(BigInteger a, long b) {
 		return ((b & 1l) == 0) ? a.add(BigInteger.ONE) : a.subtract(BigInteger.ONE);
 	}
+
+	/**
+	 * Computes the result of {@code base.pow(exponent)}. 0^0=1
+	 * @param base
+	 * @param exponent
+	 * @return
+	 * @throw ArithmeticException if {@code exponent < 0}
+	 */
+	public static BigInteger pow(BigInteger base, long exponent) {
+		if (exponent < 0) {
+			throw new ArithmeticException("Result would not have been an integer");
+		}
+		else if (exponent == 0) {
+			return BigInteger.ONE;
+		}
+		else if (exponent == 1) {
+			return base;
+		}
+		else if (exponent < Integer.MAX_VALUE) {
+			return base.pow((int)exponent);
+		}
+		BigInteger result = BigInteger.ONE;
+		while (true) {
+			if ((exponent & 1) == 1) {
+				result = result.multiply(base);
+			}
+			exponent = exponent >> 1;
+			if (exponent == 0) {
+				return result;
+			}
+			base = base.multiply(base);
+		}
+		/*else if (exponent % 2 == 0) {
+			BigInteger half = pow(base, exponent / 2);
+			return half.multiply(half);
+		}
+		else {
+			return pow(base, exponent - 1).multiply(base);
+		}*/
+	}
+
+	/**
+	 * Performs {@code base.pow(exponent)} using parallel multiplication. 0^0 = 1
+	 * @param base
+	 * @param exponent
+	 * @return The result of {@code base.pow(exponent)}
+	 * @throws IllegalArgumentException if {@code exponent < 0}
+	 */
+	public static BigInteger parallelPow(BigInteger base, long exponent) {
+		if (exponent < 0) {
+			throw new IllegalArgumentException("Result would not have been an integer");
+		}
+		else if (exponent == 0) {
+			return BigInteger.ONE;
+		}
+		else if (exponent == 1) {
+			return base;
+		}
+		BigInteger result = BigInteger.ONE;
+		while (true) {
+			if ((exponent & 1) == 1) {
+				result = result.parallelMultiply(base);
+			}
+			exponent = exponent >> 1;
+			if (exponent == 0) {
+				return result;
+			}
+			base = base.parallelMultiply(base);
+		}
+		/*else if ((exponent & 1) == 0) {//Even exponent
+			BigInteger half = parallelPow(base,exponent >> 1);
+			return half.parallelMultiply(half);
+		}
+		else {
+			return parallelPow(base,exponent-1).parallelMultiply(base);
+		}*/
+	}
 }

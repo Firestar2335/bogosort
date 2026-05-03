@@ -6,7 +6,7 @@ import java.util.*;
 
 @SuppressWarnings("unused")
 public class BogosortProb {
-	private static final long MAX_LENGTH = 500;
+	
 	private static final int CURRENT_N = 25;
 
 	private static final int BATCH_SIZE = 4;
@@ -16,7 +16,7 @@ public class BogosortProb {
 		//parallelInfo(30_000_000l);
 		//parallelInfo(10543139l);
 		//parallelInfo(2326004l, 25);
-		Fraction p = parallelChanceMax(25,14,2990484l);
+		Fraction p = parallelChanceMax(25,14,6598052l);
 		printFracK(14,p);
 		//Fraction exp = expectedValue(8,30);
 		//printFrac(exp);
@@ -137,7 +137,7 @@ public class BogosortProb {
 	}
 
 	private static void printFrac(Fraction f) {
-		if (f.stringLengthEstimate() > MAX_LENGTH) {
+		if (f.stringLengthEstimate() > Fraction.MAX_LENGTH) {
 			System.out.println(f.toBigDecimal());
 		}
 		else {
@@ -151,83 +151,6 @@ public class BogosortProb {
 				System.out.println();
 			}
 		}
-	}
-
-	/**
-	 * Performs {@code base.pow(exponent)} using parallel multiplication. 0^0 = 1
-	 * @param base
-	 * @param exponent
-	 * @return The result of {@code base.pow(exponent)}
-	 * @throws IllegalArgumentException if {@code exponent < 0}
-	 */
-	public static BigInteger parallelPow(BigInteger base, long exponent) {
-		if (exponent < 0) {
-			throw new IllegalArgumentException("Result would not have been an integer");
-		}
-		else if (exponent == 0) {
-			return BigInteger.ONE;
-		}
-		else if (exponent == 1) {
-			return base;
-		}
-		BigInteger result = BigInteger.ONE;
-		while (true) {
-			if ((exponent & 1) == 1) {
-				result = result.parallelMultiply(base);
-			}
-			exponent = exponent >> 1;
-			if (exponent == 0) {
-				return result;
-			}
-			base = base.parallelMultiply(base);
-		}
-		/*else if ((exponent & 1) == 0) {//Even exponent
-			BigInteger half = parallelPow(base,exponent >> 1);
-			return half.parallelMultiply(half);
-		}
-		else {
-			return parallelPow(base,exponent-1).parallelMultiply(base);
-		}*/
-	}
-
-	/**
-	 * Computes the result of {@code base.pow(exponent)}. 0^0=1
-	 * @param base
-	 * @param exponent
-	 * @return
-	 * @throw ArithmeticException if {@code exponent < 0}
-	 */
-	public static BigInteger pow(BigInteger base, long exponent) {
-		if (exponent < 0) {
-			throw new ArithmeticException("Result would not have been an integer");
-		}
-		else if (exponent == 0) {
-			return BigInteger.ONE;
-		}
-		else if (exponent == 1) {
-			return base;
-		}
-		else if (exponent < Integer.MAX_VALUE) {
-			return base.pow((int)exponent);
-		}
-		BigInteger result = BigInteger.ONE;
-		while (true) {
-			if ((exponent & 1) == 1) {
-				result = result.multiply(base);
-			}
-			exponent = exponent >> 1;
-			if (exponent == 0) {
-				return result;
-			}
-			base = base.multiply(base);
-		}
-		/*else if (exponent % 2 == 0) {
-			BigInteger half = pow(base, exponent / 2);
-			return half.multiply(half);
-		}
-		else {
-			return pow(base, exponent - 1).multiply(base);
-		}*/
 	}
 
 	/**
@@ -321,8 +244,8 @@ public class BogosortProb {
 		//pBelow = P(X<k)*N!
 		BigInteger fact = ExtraMath.factorial(N);
 		//System.out.println("Addition complete");
-		BigInteger num = pow(pBelow.add(pK),n).subtract(pow(pBelow, n));
-		return new Fraction(num,pow(fact,n));
+		BigInteger num = ExtraMath.pow(pBelow.add(pK),n).subtract(ExtraMath.pow(pBelow, n));
+		return new Fraction(num,ExtraMath.pow(fact,n));
 	}
 
 	/**
@@ -354,7 +277,7 @@ public class BogosortProb {
 		BigInteger fact = ExtraMath.parallelFactorial(N);
 		ParPowThread threadDen = new ParPowThread(fact,n);
 		threadDen.start();
-		long[] factors = pfFactorial(N);
+		//long[] factors = pfFactorial(N);
 		do {
 			try {
 				threadB.join();
@@ -513,13 +436,13 @@ public class BogosortProb {
 		BigInteger binom = BigInteger.ONE;//nCr(N,i-1)
 
 		BigInteger curP = sub;//P(x<=i-1)
-		BigInteger accum = pow(curP, n);
+		BigInteger accum = ExtraMath.pow(curP, n);
 		for (int i = 1; i < N; i++) {
 			BigInteger d = BigInteger.valueOf(N-i+1);
 			sub = ExtraMath.addNegOne(sub,N-i).divide(d);
 			binom = binom.multiply(d).divide(BigInteger.valueOf(i));
 			curP = curP.add(sub.multiply(binom));
-			accum = accum.add(pow(curP,n));
+			accum = accum.add(ExtraMath.pow(curP,n));
 		}
 		
 		BigInteger fact = ExtraMath.factorial(N);
@@ -534,7 +457,7 @@ public class BogosortProb {
 		if (n != 0) {
 			den = den.multiply(pow(fact,n));
 		}*/
-		BigInteger den = pow(fact,n);
+		BigInteger den = ExtraMath.pow(fact,n);
 		return new Fraction(BigInteger.valueOf(N).multiply(den).subtract(accum),den,false);
 	}
 
@@ -551,65 +474,20 @@ public class BogosortProb {
 		BigInteger binom = BigInteger.ONE;//nCr(N,i-1)
 
 		BigInteger curP = sub;//P(x<=i-1)
-		BigInteger accum = parallelPow(curP, n);
+		BigInteger accum = ExtraMath.parallelPow(curP, n);
 		for (int i = 1; i < N; i++) {
 			BigInteger d = BigInteger.valueOf(N-i+1);
 			sub = ExtraMath.addNegOne(sub,N-i).divide(d);
 			binom = binom.multiply(d).divide(BigInteger.valueOf(i));
 			curP = curP.add(sub.multiply(binom));
-			accum = accum.add(parallelPow(curP,n));
+			accum = accum.add(ExtraMath.parallelPow(curP,n));
 		}
 		//BigInteger gcd = gcdFactorial(accum,N,n);
 		//BigInteger den = parallelPow(ExtraMath.factorial(N),n).divide(gcd);
 		//return new Fraction(BigInteger.valueOf(N).multiply(den).subtract(accum.divide(gcd)),den,false);
-		BigInteger den = parallelPow(ExtraMath.factorial(N),n);
+		BigInteger den = ExtraMath.parallelPow(ExtraMath.factorial(N),n);
 		return new Fraction(BigInteger.valueOf(N).multiply(den).subtract(accum),den,false);
 	}	
-
-	private static class ParPowThread extends Thread {
-		private BigInteger number;
-		private final long exponent;
-
-		public ParPowThread(BigInteger number, long exponent) {
-			this.number = number;
-			this.exponent = exponent;
-		}
-
-		public void run() {
-			number = parallelPow(number, exponent);
-		}
-
-		public BigInteger getResult() {
-			if (getState() == State.TERMINATED) {
-				return number;
-			} else {
-				return null;
-			}
-		}
-	}
-
-	private static class GCDThread extends Thread {
-		private final BigInteger a;
-		private final int n;
-		private final long exponent;
-		private BigInteger result;
-
-		public GCDThread(BigInteger a, int n, long exponent) {
-			super();
-			this.a = a;
-			this.n = n;
-			this.exponent = exponent;
-			result = null;
-		}
-
-		public void run() {
-			result = gcdFactorial(a, n, exponent);
-		}
-
-		public BigInteger getResult() {
-			return result;
-		}
-	}
 
 	private static class DividerThread extends Thread {
 		private BigInteger num;
@@ -676,7 +554,7 @@ public class BogosortProb {
 				//long mid = minExp + ((maxExp-minExp)>>1);
 				//If there are a lot of elements, give preference to lower exponents
 				long mid = minExp + (maxExp-minExp) >> ((minExp == 0 && maxExp - minExp > 1_000_000l) ? 2 : 1);
-				divisor = parallelPow(prime, mid-minExp);//divisor = prime ^ (mid-minExp)
+				divisor = ExtraMath.parallelPow(prime, mid-minExp);//divisor = prime ^ (mid-minExp)
 				dm = num.divideAndRemainder(divisor);//dm[0] = num_0/(prime^mid)
 				//Case 1: prime^mid does not divide num - mid is too large
 				if (!dm[1].equals(BigInteger.ZERO)) {
@@ -690,13 +568,13 @@ public class BogosortProb {
 					}//Case 3: prime^mid divides num but prime^(mid+1) doesn't - mid is correct
 					else {
 						//result = divisor.parallelMultiply(parallelPow(prime, minExp));
-						result = divisor.multiply(pow(prime, minExp));
+						result = divisor.multiply(ExtraMath.pow(prime, minExp));
 						return;
 					}
 				}
 			}
 			//result = parallelPow(prime, minExp);
-			result = pow(prime, minExp);
+			result = ExtraMath.pow(prime, minExp);
 		}
 		
 		/**
@@ -730,57 +608,6 @@ public class BogosortProb {
 			} else {
 				return null;
 			}
-		}
-	}
-
-	private static class ChanceMaxThread extends Thread {
-		private Fraction result;
-		private final int N;
-		private final int k;
-		private final long n;
-
-		public ChanceMaxThread(int N, int k, long n) {
-			super();
-			this.N = N;
-			this.k = k;
-			this.n = n;
-			result = null;
-		}
-
-		public void run() {
-			result = parallelChanceMax(N,k,n);
-		}
-
-		public Fraction getResult() {
-			if (isAlive()) {
-				return null;
-			} else {
-				return result;
-			}
-		}
-
-		public int getK() {
-			return k;
-		}
-	}
-
-	private static class ExpectedValueThread extends Thread {
-		private Fraction result;
-		private final int N;
-		private final long n;
-
-		public ExpectedValueThread(int N, long n) {
-			this.N = N;
-			this.n = n;
-			this.result = null;
-		}
-
-		public Fraction getResult() {
-			return result;
-		}
-
-		public void run() {
-			result = parallelExpectedValue(N,n);
 		}
 	}
 }

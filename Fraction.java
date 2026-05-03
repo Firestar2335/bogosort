@@ -2,6 +2,8 @@ import java.math.*;
 import java.io.PrintStream;
 
 public class Fraction extends Number implements Comparable<Fraction> {
+	public static final long MAX_LENGTH = 500;
+
 	private static final long DOUBLE_SIG_MASK = 0x000f_ffff_ffff_ffffl;
 	private static final int FLOAT_SIG_MASK = 0x7f_ffff;
 
@@ -425,16 +427,16 @@ public class Fraction extends Number implements Comparable<Fraction> {
 		}
 		ParPowThread numThread = new ParPowThread(num, Math.abs(exponent));
 		numThread.start();
-		BigInteger newDen = BogosortProb.parallelPow(den, Math.abs(exponent));
+		BigInteger newDen = ExtraMath.parallelPow(den, Math.abs(exponent));
 		while (numThread.isAlive()) {
 			try {
 				numThread.join();
 			} catch (InterruptedException e) {}
 		}
 		if (exponent > 0) {
-			return new Fraction(numThread.number, newDen, false);
+			return new Fraction(numThread.getResult(), newDen, false);
 		} else {
-			return new Fraction(newDen, numThread.number, false);
+			return new Fraction(newDen, numThread.getResult(), false);
 		}
 	}
 
@@ -518,8 +520,12 @@ public class Fraction extends Number implements Comparable<Fraction> {
 	}
 
 	public int compareTo(Fraction other) {
-		BigInteger newNum = num.multiply(other.den).subtract(other.num.multiply(den));
-		return newNum.signum();
+		//BigInteger newNum = num.multiply(other.den).subtract(other.num.multiply(den));
+		//return newNum.signum();
+		if (den.equals(other.den)) {
+			return num.compareTo(other.num);
+		}
+		return num.multiply(other.den).compareTo(other.num.multiply(den));
 	}
 
 	/**
@@ -554,18 +560,14 @@ public class Fraction extends Number implements Comparable<Fraction> {
 		return num.remainder(den);
 	}
 
-	private static class ParPowThread extends Thread {
-		public BigInteger number;
-		public long exponent;
-
-		public ParPowThread(BigInteger number, long exponent) {
-			super();
-			this.number = number;
-			this.exponent = exponent;
+	public String format() {
+		if (isInteger()) {
+			return num.toString();
 		}
-
-		public void run() {
-			number = BogosortProb.parallelPow(number, exponent);
+		else if (stringLengthEstimate() > MAX_LENGTH) {
+			return toBigDecimal().toString();
+		} else {
+			return num.toString() + "/" + den.toString() + " (" + doubleValue() + ")";
 		}
 	}
 }
